@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oidasheim-synapse"
+version = "0.1.0"
+description = "Modular SYNAPSE production and release workflow planner"
+readme = "SYNAPSE-MODULE.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+synapse-plan = "synapse_cli:main"
+
+[tool.setuptools]
+packages = ["synapse"]
+py-modules = ["synapse_cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

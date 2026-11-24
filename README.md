@@ -29,7 +29,7 @@ WE.ED.IT Director ist eine professionelle, weitgehend autonome Videoproduktions-
 ### Hauptmodule
 
 - **Audio-DSP**: Beat-Tracking, Transient-Snapping, Felt-Tempo, Onsets und Drop-Erkennung.
-- **MixMeister-Fallback**: Professionelle BPM-Erkennung bei schwer analysierbaren Tracks.
+- **MixMeister-Fallback**: BPM-Erkennung bei schwer analysierbaren Tracks.
 - **Stem-Separation**: 4-Stem-Demucs mit Vocals, Drums, Bass und Other.
 - **Vocal-Ducking**: Dynamisches Sidechain-Ducking und Stereo-Vocal-Doubler.
 - **Clip-Highlights**: Schärfe, Dynamik, Farbtemperatur, Rule-of-Thirds und Horizontalausgleich.
@@ -42,13 +42,12 @@ WE.ED.IT Director ist eine professionelle, weitgehend autonome Videoproduktions-
 ### Self-Learning Clip-Pool
 
 ```text
-30.000+ Clips
-    → Re-Embedding / Visual Genome
-    → Motion-, Farbe-, Angle- und Emotions-Tags
-    → Semantisches Matching
-    → Anti-Repetition-Guard
-    → Diversity-Sampling
-    → Deterministischer Timeline-Plan
+Clip-Pool → Re-Embedding / Visual Genome
+          → Motion-, Farb-, Angle- und Emotions-Tags
+          → Semantisches Matching
+          → Anti-Repetition-Guard
+          → Diversity-Sampling
+          → Deterministischer Timeline-Plan
 ```
 
 ## Native Genome Compiler
@@ -70,12 +69,8 @@ WE.ED.IT Director ist eine professionelle, weitgehend autonome Videoproduktions-
 
 ### Visual Genome Daten
 
-- `motion_score`
-- `energy_level`
-- `camera_angle`
-- `dominant_colors`
-- Top-Auto-Tags
-- CLIP-Text-/Bild-Embeddings
+- `motion_score`, `energy_level`, `camera_angle` und `dominant_colors`
+- Top-Auto-Tags und CLIP-Text-/Bild-Embeddings
 - Nutzungshistorie und Anti-Repetition-Metriken
 
 ## SYNAPSE AUDIO DYNAMICS
@@ -182,17 +177,145 @@ Virale Musikclips folgen typischen Mustern:
 
 ### Plattform-Fokus
 
-- **TikTok:** Höchstes UGC- und Viralitätspotenzial.
-- **Instagram Reels:** Starke Musikentdeckung, markenorientiertes Crossposting.
-- **YouTube:** Größte Reichweite, MV, Shorts und kollaborative Empfehlungen.
-- **X:** Primär Industrie-, Community- und Diskussionskanal.
+- **TikTok:** UGC- und Viralitätspotenzial.
+- **Instagram Reels:** Musikentdeckung und markenorientiertes Crossposting.
+- **YouTube:** Musikvideos, Shorts und Empfehlungen.
+- **X:** Industrie-, Community- und Diskussionskanal.
 
 Wichtige KPIs sind Wiedergabezeit, Completion Rate, Shares, Virality-Rate, Creation Count und Streaming-/Chart-Conversion.
 
+## Portable Unified Edition v8.0
+
+Die portable Edition bündelt fünf Stacks in einem lokalen Workspace. Runtimes, Datenbanken, Berichte, Caches und Render-Outputs bleiben im Projektverzeichnis isoliert.
+
+| Stack | Bereiche | Kernfunktionen |
+|---|---|---|
+| **SYNAPSE Audio Dynamics** | `core/`, `weedit/`, `claw2/`, `viral/`, `content/`, `portals/`, `agents/` | Native Genome Compiler, Hardware-Isolation, 2/3 SQLite Lock, Rhythm Semantic Engine, Semantic Tree und Agent Swarm |
+| **SYNAPSE Full-Stack v4.0** | `core/synapse_apex_kernel.py` | 10 Departments, deklarative DAG-Workflows, hash-verkettetes Event Ledger, DLQ, CAS-Leases, Gates, Circuit Breaker, LinUCB und Dashboard |
+| **MMIS + PROMO.ED** | `mmis/`, `promo_ed/`, `cpp/`, `sql/` | Causal DiD, Attribution, Forecasting, DuckDB-Analysen und 10-Agenten-Projekt-Lifecycle |
+| **WE.ED.IT 420-Mode** | `weedit_420mode/` | UCB1 Director, STFT-DSP, Entropie-Fusion, Catalog Lock, Outro-Schutz und Oracle-Autopsie |
+| **Semantic Beat-Synced** | `semantic_beatsync/` | Beat-Grid, Energie- und Section-Erkennung, A/V-Planung, Multi-Aspect-Clip-Pools und Playlist-Orchestrierung |
+
+### Portables Layout
+
+```text
+./
+├── assets/                 # Banner und Beispieldateien
+├── bin/                    # Optionale gebündelte Tools und native Binaries
+├── config/                 # Clip-Pools, Music-Dirs und Blacklists
+├── core/                   # Apex Kernel, Semantic Engine und API
+├── cpp/                    # C++20 / AVX2 Build-Sourcen
+├── database/               # Lokale Datenbanken
+├── docs/                   # Architektur, Catalyst Protocol, Oracle-Autopsie
+├── mmis/                   # Analytics und Forecasting
+├── promo_ed/               # Promo-Lifecycle
+├── semantic_beatsync/      # Beat-Sync-Pipeline
+├── tests/                  # Pytest-Suiten
+├── web/                    # Cockpit UI
+├── weedit/                 # Genome Compiler
+├── weedit_420mode/         # 420-Mode
+├── PORTABLE_INSTALL.bat    # Portables Setup und Verifikation
+├── PORTABLE_START.bat      # Launcher für CLI, Cockpit und Tests
+├── portable_env.bat        # Isolierte Umgebungsvariablen
+└── weed.bat / weed.py      # Vereinheitlichte CLI
+```
+
+Große GGUF-Modelle werden separat in `./models/` oder über `WEEDIT_MODELS_FALLBACK_DIR` eingebunden und nicht in ein Source-Release-ZIP dupliziert.
+
+### Portable Quickstart und CLI
+
+```bat
+PORTABLE_INSTALL.bat
+PORTABLE_START.bat
+```
+
+Unbeaufsichtigte Installation:
+
+```bat
+cmd /c "set SYNAPSE_NO_PAUSE=1 && PORTABLE_INSTALL.bat"
+```
+
+Beispiele der vereinheitlichten v8-CLI:
+
+```powershell
+.\weed.bat doctor
+.\weed.bat toolchain
+.\weed.bat verify
+.\weed.bat compile --song "I:\Oidasheim\Sound\Track.mp3" --style drill --export-genome-bundle
+.\weed.bat apex run
+.\weed.bat apex evolution --tier 1
+.\weed.bat apex verify
+.\weed.bat mmis demo
+.\weed.bat mmis research
+.\weed.bat promo --project "Beton_&_Bass" --artist "OIDAHEIM" --genre "Bavarian Drill"
+.\weed.bat 420mode --analyze "assets\suno_downloads\track.mp3"
+.\weed.bat rhythm --song "assets\suno_downloads\track.mp3" --style drill --out "reports\rhythm_plan.json"
+.\weed.bat semantic-beatsync status
+.\weed.bat semantic-beatsync pools --aspect 16:9
+.\weed.bat serve --port 8089
+```
+
+### REST API
+
+Die v8-API stellt unter anderem `/health`, `/api/v1/banner`, `/api/v1/apex/run`, `/api/v1/apex/verify`, `/api/v1/mmis/research`, `/api/v1/promo/run`, `/api/v1/rhythm/plan` und `/api/v1/semantic-beatsync/pools` bereit. Ältere Mesh-, Tree-, Provider- und Viral-Prediction-Endpunkte können parallel verfügbar sein.
+
+## Catalyst Protocol v4.0
+
+**„From the Gutter to the Top 1“** beschreibt einen vierphasigen Release- und Entwicklungsprozess, der Authentizität bewahren und Musik, Visuals, Distribution und Feedback miteinander verbinden soll.
+
+### Phase 1 — Raw Ore
+
+- **KAIRO** analysiert Frequenzfundamente, Vocals, Timbre und Transienten.
+- **JINX** entwickelt eine ungeschönte, lokal verankerte visuelle Erzählung.
+
+### Phase 2 — The Chrysalis
+
+- **KAIRO & VEGA** gestalten Vocal Chains und Mastering; als Ziel wird EBU R128 um −14 LUFS mit geschützter Dynamik genannt.
+- **JINX & CLAW2** verbinden Visual Vector Matching, Beat-Sync und die Kinetic Perspective Engine.
+- Der Clip-Katalog-Lock soll repetitive Nutzung begrenzen.
+
+### Phase 3 — Hyper-Local to Global Seeding
+
+- **ORION** priorisiert passende Nischen-Playlists, Communities und Kuratoren.
+- **JINX / Ghost_Writer** bereitet plattformgerechte Kurzformate und Teaser für TikTok, Instagram Reels und YouTube Shorts vor.
+
+### Phase 4 — Financial Scaling
+
+Die vorgeschlagenen Schwellenwerte dienen als konfigurierbare Workflow-Parameter, nicht als Garantie für Reichweite oder Conversion:
+
+- Engagement Rate ≥ 15 %
+- Completion Rate ≥ 70 %
+- Composite Viral Score ≥ 75/100
+- Vorgeschlagene Verteilung des Testbudgets: 50 % TikTok, 30 % Reels, 20 % YouTube Shorts
+- Vorgeschlagener Royalty Split: 40 % Artist, 20 % Label/KAIRO, 15 % Producer/VEGA, 15 % Promo/JINX, 10 % Treasury/ATLAS
+
+Ad-Ausgaben und Royalty-Zahlungen sollten vor Ausführung menschlich freigegeben und durch Budgetlimits, Berechtigungsprüfungen und nachvollziehbare Abrechnungen abgesichert werden.
+
+### 7-Tage Release-Aktionsplan
+
+| Tag | Verantwortliche | Aktion |
+|---|---|---|
+| 1 | KAIRO | Audio-Import, Transienten-Analyse und Stem-Vorbereitung |
+| 2 | VEGA | Mastering, Loudness- und True-Peak-QC |
+| 3 | JINX | Beat-Sync-Video und Clip-Diversity-Prüfung |
+| 4 | Self-Critic / LinUCB | Schnittdichte prüfen, Hektik-Check und Reward-Update |
+| 5 | ORION / Ghost_Writer | Teaser und Playlist-Pitch vorbereiten |
+| 6 | ATLAS | Release-Monitoring und Budgetstatus prüfen |
+| 7 | ATLAS / Team | Feedback auswerten, Ergebnisse dokumentieren und Scaling-Entscheidungen freigeben |
+
+## Rekursive Oracle-Autopsie
+
+Der Feedback-Loop soll Prognosen und Release-Metriken stufenweise prüfen:
+
+1. **L1 — Klassifikationskorrektur:** BPM-, Tonart-, Genre- und Zielgruppen-Tags überprüfen.
+2. **L2 — Ledger-Abgleich:** Ergebnisse mit dem historischen Release-Ledger vergleichen; vorgeschlagene Mindestwerte sind Precision > 80 % und Recall > 70 %.
+3. **L3 — Entropie- und Konsensprüfung:** Unsichere Vorhersagen neu bewerten und Agenten-Konsens nachvollziehbar protokollieren.
+
+Als operative Leitplanken sind höchstens drei Iterationen, eine relative Delta-Schranke unter 2 % und ein transaktionaler Rollback-Ledger vorgesehen. Prognosen und Schwellenwerte müssen mit realen Daten validiert werden.
+
 ## Hardware-Profil
 
-- Intel Core i5-9400F
-- 6 physische Kerne / 6 Threads
+- Intel Core i5-9400F, 6 physische Kerne / 6 Threads
 - NVIDIA GeForce GTX 1650, Turing NVENC
 - Supervisor/API: Kerne 0–1
 - Rendering/DSP: Kerne 2–5
@@ -211,20 +334,27 @@ CPU-Fallback:
 
 ## Rendering-Invarianten
 
-- `-map 0:v -map 1:a`
+- Getrenntes Stream-Mapping: `-map 0:v -map 1:a`
 - Keine Metadaten oder Kapitel: `-map_metadata -1 -map_chapters -1 -sn -dn`
-- Audio: konstant 320 kbps AAC
-- Hardware-Rendering bevorzugt, deterministischer CPU-Fallback
-- 1080p / 4K adaptive Worker-Verteilung
-- Keine Clip-Wiederholungen oberhalb des 66,7-%-Catalog-Limits
+- Audio: 320-kbps-AAC als Projektvorgabe
+- Hardware-Rendering bevorzugt, CPU-Fallback verfügbar
+- Adaptive Worker-Verteilung für 1080p und 4K
+- Anti-Repetition über Catalog-Lock und Nutzungshistorie
 - Export als MP4 und optional OpenTimelineIO
 
-## Tests
+## Tests und Release-Paket
 
 ```bash
 pytest tests/ -v
-pytest tests/ -q
 ```
+
+Portables Source-Release-ZIP kann über das Projekt-Skript erzeugt werden:
+
+```powershell
+.\venv\Scripts\python.exe scripts\build_release_zip.py
+```
+
+Die vollständige Hardware- und Regelwerks-Spezifikation ist in `docs/ARCHITECTURE.md` vorgesehen; ergänzende Protokolle können in `docs/CATALYST_PROTOCOL.md` und `docs/ORACLE_AUTOPSIE.md` liegen.
 
 ## Verknüpfte Projekte
 

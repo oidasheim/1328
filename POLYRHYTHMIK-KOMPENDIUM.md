@@ -69,6 +69,92 @@ print(resolve_meter(7, 8, bpm=144, fps=30))
 
 Run the test suite with `pytest tests/test_rhythm.py -q`.
 
+## Warum Polyrhythmen herausfordernd wirken
+
+Die Herausforderung liegt meist weniger in der Rechnung als darin, zwei
+regelmäßige Pulsfolgen unabhängig wahrzunehmen und zugleich einen gemeinsamen
+Puls beizubehalten.
+
+- **Puls und Akzent**: Das Ohr sucht oft nach einem stabilen Grundpuls und
+  gruppiert Ereignisse in wiederkehrende Akzente. Zwei gleichmäßige Folgen
+  können unterschiedliche Gruppierungen nahelegen.
+- **Motorische Entkopplung**: Beim Klatschen einer Stimme und Sprechen der
+  anderen müssen Aufmerksamkeit und Bewegung zwischen zwei Mustern wechseln.
+  Anfänger verschmelzen sie häufig zu einer einzigen synkopierten Linie.
+- **Akzent-Erwartung**: Wenn die Betonungen nicht auf vertraute Taktgrenzen
+  fallen, kann der Downbeat zunächst unklar wirken. Ein hörbarer gemeinsamer
+  Rasterpuls hilft bei der Orientierung.
+- **Zyklus und Wiederbegegnung**: Die Pulse des 3:2-Musters treffen sich am
+  Zyklusanfang wieder. Diese periodische Rückkehr kann Spannung und Auflösung
+  erzeugen; wie sie wirkt, ist jedoch musikalisch und individuell verschieden.
+
+Die Metapher „Kopf klopfen, Bauch reiben“ beschreibt die Koordinationsaufgabe
+anschaulich, aber das Gehirn wird dabei nicht buchstäblich in autonome Zentren
+aufgespalten. Polyrhythmik ist auch nicht automatisch hypnotisch oder süchtig
+machend. Sie ist eine musikalische Struktur, deren Wirkung von Tempo,
+Klangfarbe, Akzentuierung, Kontext und Hörerfahrung abhängt.
+
+## Schritt-für-Schritt-Übung: 3 gegen 2
+
+Wähle ein langsames Metronomtempo, zum Beispiel 60 BPM. Ein gemeinsamer Zyklus
+wird in sechs gleich große Rasterpunkte geteilt:
+
+```text
+Rasterpunkt:  1   2   3   4   5   6
+3er-Stimme:   X   .   X   .   X   .
+2er-Stimme:   X   .   .   X   .   .
+Zählhilfe:    1   &   2   &   3   &
+```
+
+Die Tabelle stellt beide Stimmen auf denselben Zeitrahmen: Die 3er-Stimme
+spielt auf den Rasterpunkten 1, 3 und 5; die 2er-Stimme auf 1 und 4. Die beiden
+Stimmen fallen am Anfang zusammen und haben innerhalb des Zyklus keine weitere
+gemeinsame Attacke.
+
+Übe in dieser Reihenfolge:
+
+1. Klatsche nur die 2er-Stimme und zähle gleichmäßig `1 & 2 & 3 &`.
+2. Klatsche nur die 3er-Stimme.
+3. Klatsche die 2er-Stimme und sprich die 3er-Stimme mit Silben wie `TA-ka-di`.
+4. Tausche die Aufgaben.
+5. Spiele beide Stimmen leise auf zwei Klangfarben, etwa Handfläche und Finger.
+6. Nimm dich auf. Prüfe, ob Tempo und Lautstärke gleichmäßig bleiben, statt nur
+   zu versuchen, möglichst schnell zu spielen.
+
+Wenn der Puls auseinanderläuft, gehe zum Metronom zurück und verlangsame das
+Tempo. Erst nach mehreren stabilen Wiederholungen solltest du steigern.
+
+## Transfer auf andere Verhältnisse
+
+- **4:3**: Teile einen gemeinsamen Zyklus in zwölf kleine Rasterpunkte. Die
+  erste Stimme setzt viermal, die zweite dreimal ein.
+- **5:4**: Ein längerer gemeinsamer Zyklus mit mehr Zwischenpositionen. Zuerst
+  jede Linie separat üben; beim Zusammenspiel eine Stimme sprechen.
+- **Polymetrik 4/4 gegen 3/4**: Halte denselben Viertelpuls, aber zähle die
+  Taktgruppen unabhängig. Nach drei 4/4-Takten und vier 3/4-Takten treffen die
+  Taktanfänge wieder zusammen.
+
+Die „Tee-Methode“ und andere Sprechsilben sind mnemonische Hilfen, keine
+verbindlichen Notationssysteme. Nutze Silben, die sich bei deinem Tempo klar
+sprechen lassen.
+
+## Musikalische Anwendung
+
+Polyrhythmik kann als Textur statt als Rechenübung eingesetzt werden:
+
+- Eine gleichmäßige Stimme hält den Grundpuls, eine zweite setzt Akzente
+  dagegen.
+- Kick oder Bass können die Hauptgruppierung tragen, während Hi-Hat, Percussion
+  oder Ad-libs eine andere Unterteilung markieren.
+- Im Arrangement kann zunächst nur eine Stimme erklingen; die zweite kommt
+  später hinzu, damit die rhythmische Spannung nachvollziehbar bleibt.
+- Bei Wechseln zwischen 4/4, 6/8 oder 7/8 helfen klare Übergangsakzente und
+  ein kurzer gemeinsamer Puls, den neuen Takt hörbar zu machen.
+
+Höre unterschiedliche Traditionen und Stücke respektvoll im musikalischen
+Kontext: Polyrhythmik ist in vielen Musikkulturen verwurzelt und nicht bloß ein
+Effekt oder eine mathematische Spielerei.
+
 ## Audio-visuelle Gestaltung: verantwortungsvolle Defaults
 
 Beat-Sync, Zoom, Farbwechsel und Schnitte sind kreative Werkzeuge, keine
@@ -77,3 +163,11 @@ Flackerfrequenzen verwenden, die photosensitive Zuschauer gefährden könnten;
 bei schnellen Helligkeitswechseln konservative Grenzwerte, Warnhinweise und
 eine nicht-flackernde Alternative anbieten. Audio-Mastering muss Pegelspitzen,
 Kopfhörer- und Lautsprecherwiedergabe sowie geltende Loudness-Ziele prüfen.
+
+## Weiterführende Übungsquellen
+
+Als Einstieg in praktische Übungen und Erklärungen können die vom Projekt
+zusammengetragenen Materialien der Open Music Academy, der Schlagzeugschule
+Berlin, startdrumming.de und LANDR dienen. Prüfe bei externen Quellen jeweils
+Notation, Terminologie und kulturellen Kontext; die Zusammenfassung hier ist
+keine wörtliche Wiedergabe dieser Beiträge.

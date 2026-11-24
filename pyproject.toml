@@ -33,6 +33,7 @@ weedit-lipsync = "weedit_native.lipsync_cli:main"
 weedit-separate-vocals = "weedit_native.vocal_stems_cli:main"
 synapse-platform-vector = "synapse.platform_vector_cli:main"
 synapse-evidence = "synapse.viral_evidence_cli:main"
+synapse-ava-plan = "synapse.creative_identity:main"
 weed = "weedit_native.cli:main"
 
 [tool.setuptools]

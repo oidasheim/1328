@@ -15,6 +15,7 @@ semantic = ["duckdb>=1.0", "open-clip-torch>=2.24", "torch>=2.2", "Pillow>=10", 
 audio = ["librosa>=0.10", "numpy>=1.26", "soundfile>=0.12"]
 vision = ["opencv-python>=4.8", "numpy>=1.26"]
 cuda = ["numpy>=1.26", "opencv-python>=4.8", "cupy-cuda12x>=13"]
+cliruntime = ["rich>=13"]
 test = ["pytest>=8", "numpy>=1.26"]
 stems = ["demucs>=4.0", "audio-separator>=0.30"]
 
@@ -29,6 +30,7 @@ synapse-art-director = "weedit_native.art_director:main"
 weedit-art-director = "weedit_native.art_director:main"
 weedit-lipsync = "weedit_native.lipsync_cli:main"
 weedit-separate-vocals = "weedit_native.vocal_stems_cli:main"
+synapse-platform-vector = "synapse.platform_vector_cli:main"
 weed = "weedit_native.cli:main"
 
 [tool.setuptools]

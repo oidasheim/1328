@@ -16,6 +16,7 @@ audio = ["librosa>=0.10", "numpy>=1.26", "soundfile>=0.12"]
 vision = ["opencv-python>=4.8", "numpy>=1.26"]
 cuda = ["numpy>=1.26", "opencv-python>=4.8", "cupy-cuda12x>=13"]
 test = ["pytest>=8", "numpy>=1.26"]
+stems = ["demucs>=4.0", "audio-separator>=0.30"]
 
 [project.scripts]
 synapse-plan = "synapse_cli:main"
@@ -24,9 +25,10 @@ synapse-semantic-render = "synapse.semantic_render:main"
 synapse-wong = "synapse.wong_cli:main"
 synapse-fullstack = "synapse.fullstack:main"
 synapse-feedback = "synapse.feedback_cli:main"
-synapse-art-director = "synapse.art_director:main"
+synapse-art-director = "weedit_native.art_director:main"
 weedit-art-director = "weedit_native.art_director:main"
 weedit-lipsync = "weedit_native.lipsync_cli:main"
+weedit-separate-vocals = "weedit_native.vocal_stems_cli:main"
 weed = "weedit_native.cli:main"
 
 [tool.setuptools]

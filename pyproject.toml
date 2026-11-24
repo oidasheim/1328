@@ -25,6 +25,7 @@ synapse-wong = "synapse.wong_cli:main"
 synapse-fullstack = "synapse.fullstack:main"
 synapse-feedback = "synapse.feedback_cli:main"
 synapse-art-director = "synapse.art_director:main"
+weedit-art-director = "weedit_native.art_director:main"
 weed = "weedit_native.cli:main"
 
 [tool.setuptools]

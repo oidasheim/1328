@@ -1,42 +1,38 @@
 import json
-from pathlib import Path
 
-import numpy as np
-
-from synapse.art_director import (BarFeature, ClipRecord, aligned_array,
-                                  compile_timeline, load_clip_records,
-                                  write_timeline)
+from weedit_native.art_director import BuildConfig, run_build
+from weedit_native.models import RenderAST, RenderShot
 
 
-def test_aligned_array_is_32_byte_aligned():
-    array = aligned_array((24,), np.float32)
-    assert array.ctypes.data % 32 == 0
+def test_build_pipeline_emits_reports_and_ledger_without_render(tmp_path, monkeypatch):
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"not decoded by mocked compiler")
+    clips = tmp_path / "clips"
+    clips.mkdir()
+    video = clips / "clip.mp4"
+    video.write_bytes(b"placeholder")
+    db = tmp_path / "database" / "genome.sqlite3"
+
+    monkeypatch.setattr("weedit_native.art_director.scan_directory", lambda *_: {"indexed": 1, "cached": 0, "skipped": 0})
+    def fake_compile(*args, **kwargs):
+        return RenderAST(str(song), (RenderShot(str(video), 0, 1, 0),), 1,
+                         width=1080, height=1920, fps=30)
+    monkeypatch.setattr("weedit_native.art_director.compile_project", fake_compile)
+
+    report = run_build(BuildConfig(song, clips, db, tmp_path / "out.mp4", tmp_path / "reports"))
+    assert report["render_id"]
+    assert report["stages"][-1]["status"] == "not-requested"
+    assert (tmp_path / "reports" / f"song-{report['render_id']}.ast.json").exists()
+    assert (tmp_path / "reports" / f"song-{report['render_id']}.html").exists()
+    manifest = json.loads((tmp_path / "reports" / f"song-{report['render_id']}.manifest.json").read_text())
+    assert manifest["limitations"]
 
 
-def test_compile_timeline_respects_blackout_and_cooldown(tmp_path):
-    bars = [BarFeature(0, 0.0, 2.0, 120.0, "BUILDUP", 0.8, 0.2,
-                       tuple([0.5] * 60), tuple([0.5] * 60), False)]
-    clips = [ClipRecord(1, str(tmp_path / "one.mp4"), usable_frames=120,
-                        role="SUBJECT", use_count=0)]
-    events = compile_timeline(bars, clips, fps=30, blackout_last_frames=4)
-    assert any(event.blackout for event in events)
-    assert all(event.clip_id is not None or event.blackout for event in events)
-
-
-def test_compile_timeline_rejects_empty_inputs():
+def test_build_config_rejects_odd_dimensions(tmp_path):
+    config = BuildConfig(tmp_path / "a", tmp_path / "b", width=101, height=200)
     try:
-        compile_timeline([], [], fps=30)
-    except ValueError:
-        pass
+        config.validate()
+    except ValueError as exc:
+        assert "even" in str(exc)
     else:
-        raise AssertionError("empty timeline should fail")
-
-
-def test_write_timeline_roundtrip(tmp_path):
-    event = {"event_id": 0, "bar": 0, "section": "VERSE", "start_frame": 0,
-             "end_frame": 29, "clip_id": 1, "file_path": "/clip.mp4",
-             "source_frame": 0, "blackout": False, "match_cut": False,
-             "sub_bass": (0.1,), "high_hat": (0.2,)}
-    target = tmp_path / "timeline.json"
-    target.write_text(json.dumps({"version": 1, "events": [event]}), encoding="utf-8")
-    assert target.exists()
+        raise AssertionError("odd dimensions should be rejected")

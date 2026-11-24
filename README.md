@@ -1,174 +1,165 @@
 # 1328 — Oidasheim SYNAPSE / WE.ED.IT
 
-Lokale, Python-first Plattform für Musikproduktion, Beat-Synchronisation, semantische Clip-Auswahl und native WE.ED.IT-Workflows.
+Lokale, Python-first Werkzeugkette für Musik- und Clip-Analyse, Produktionsplanung, Timeline-Kompilierung und nachvollziehbare Workflow-Prüfungen. Der Code umfasst mehrere zusammenarbeitende, aber eigenständig nutzbare Stacks. C++20/CMake ist für den nativen Granular-Synth-Kern vorgesehen; die Haupt-CLI und die meisten Workflows sind Python.
 
-Der Repository-Stack kombiniert eine Python-CLI, lokale Datenbanken, C++-/CMake-Komponenten und verifizierte Offline-Prüfungen. Die implementierten Standardabläufe führen keine versteckten Veröffentlichungen, Werbeausgaben oder Cloud-Synchronisationen aus.
+## Stacks im Überblick
 
-## Hauptbereiche
+| Stack | Aufgabe | Einstiegspunkt |
+|---|---|---|
+| **SYNAPSE** | Lokale Produktions-/Release-Pläne und JSON-Manifeste mit expliziten Freigabegrenzen | `synapse-plan`, `synapse/` |
+| **WE.ED.IT Native** | Clip-Index, SongAST, Shot-Intents, Resolver, optimierte RenderAST, Reports und optionales FFmpeg-Rendering | `weed`, `weedit_native/` |
+| **SYNAPSE Fullstack** | Lokale Eingabeprüfung und gestufte Orchestrierung mit Berichten | `synapse-fullstack` |
+| **Fullstack v9** | Reviewbarer Stage-Plan, lokaler Batch-Datei-Audit und JSON-Ledger; kein externer Sync | `synapse-fullstack-v9`, `src/fullstack_v9_workflow.py` |
+| **Audio-/Semantik-Tools** | Optionale Audio-, Vision-, Embedding-, Feedback-, Stem- und Evidenz-Funktionen | `synapse/`, `weedit_native/` |
+| **Native C++** | C++20-Granular-Synth-Bibliothek mit CTest-Test | `native/`, `CMakeLists.txt` |
+| **Portable Setup** | Lokale Verzeichnisse, Datenbankinitialisierung, Diagnose und Testbericht | `scripts/portable_install.py` |
 
-- **SYNAPSE** – Produktions- und Release-Planung sowie lokale JSON-Manifeste.
-- **WE.ED.IT Native** – Director-, Lipsync-, Vocal-Stems-, Art-Director- und Diagnosebefehle.
-- **Fullstack v9** – deterministische lokale Workflow-Profile und JSON-Ledgers.
-- **Semantik und Analytics** – optionaler Clip-Index, Embeddings und evidenzbasierte Auswertungen.
-- **Portable Setup** – lokale Verzeichnisse, SQLite-Initialisierung, Diagnose und Tests.
-
-Der Python-Anteil bildet den Hauptteil des Projekts; C++20/CMake bietet native Komponenten für Performance-Spezialfälle.
+Die optionale Abhängigkeitsgruppen und ausführbaren Paketbefehle sind in [`pyproject.toml`](pyproject.toml) definiert. GPU, Modellgewichte und optionale Medienbibliotheken sind keine Voraussetzung für die Kern- und AST-Tests.
 
 ## Schnellstart
 
-Python 3.10 oder neuer wird benötigt.
+Voraussetzung: Python 3.10 oder neuer.
 
 ```bash
 python -m venv .venv
 ```
 
-Windows:
+Windows (PowerShell):
 
 ```powershell
-.venv\Scripts\python.exe -m pip install -e .
+.venv\Scripts\python.exe -m pip install -e '.[test]'
+.venv\Scripts\weed.exe doctor
 ```
 
 Linux/macOS:
 
 ```bash
-.venv/bin/python -m pip install -e .
+.venv/bin/python -m pip install -e '.[test]'
+.venv/bin/weed doctor
 ```
 
-Optionales Test- und Vision-Setup:
+Für Audio-Analyse und Clip-Scanning installiere die passenden optionalen Extras sowie FFmpeg separat:
 
 ```bash
-python -m pip install -e '.[test,vision]'
-pytest tests/ -q
+python -m pip install -e '.[audio,vision]'
 ```
 
-## Typische Befehle
+## Typische Workflows
 
-### SYNAPSE planen
+### SYNAPSE: Release-Plan erstellen
 
 ```bash
-synapse-plan path/to/track.mp3 --artist "Artist" --title "Titel" --genre "Genre"
+synapse-plan path/to/track.mp3 \
+  --artist "Artist" --title "Track" --genre "Genre" \
+  --out reports/synapse_manifest.json
 ```
 
-Alternativ über Python:
+Der Plan ist lokal. Posting, Anzeigen, Outreach und finanzielle Transfers sind keine automatischen CLI-Aktionen und benötigen gesonderte Integrationen und Freigaben.
+
+### WE.ED.IT: scannen, kompilieren und rendern
 
 ```bash
-python synapse_cli.py path/to/track.mp3 --artist "Artist" --title "Titel"
+weed scan ./clips --db ./database/genome.sqlite3
+weed compile ./music/song.mp3 ./clips \
+  --db ./database/genome.sqlite3 --out ./reports/song.render.json
+weed render ./reports/song.render.json --out ./output/song.mp4
 ```
 
-### WE.ED.IT Native CLI
+Oder als expliziter Ein-Aufruf-Workflow:
 
 ```bash
-python -m weedit_native.cli doctor --deep
-python -m weedit_native.cli verify
-python -m weedit_native.cli benchmark --iterations 250
-python -m weedit_native.cli scan path/to/clips
-python -m weedit_native.cli compile path/to/track.mp3
-python -m weedit_native.cli report
+weed make ./music/song.mp3 ./clips \
+  --db ./database/genome.sqlite3 \
+  --ast ./reports/song.render.json \
+  --out ./output/song.mp4
 ```
 
-Nach der Paketinstallation sind außerdem die konsolidierten Skript-Einstiege verfügbar, beispielsweise:
+`weed make` rendert nur, wenn `--out` angegeben ist. Das Render-Backend benötigt FFmpeg. Prüfe Timeline, Quellenrechte und Ergebnis vor einer Veröffentlichung. Siehe [`WEEDIT-NATIVE.md`](WEEDIT-NATIVE.md).
 
-```bash
-weed doctor
-weed verify
-weedit-art-director --help
-weedit-lipsync --help
-weedit-separate-vocals --help
-```
-
-### Fullstack v9
-
-Der Workflow erzeugt nur lokale Prüf-, Vorschau- und Ledger-Artefakte. Der Standard ist `--dry-run`.
+### Fullstack v9: lokale Planung und Audit
 
 ```bash
 python src/fullstack_v9_workflow.py --eval
 python src/fullstack_v9_workflow.py --profile full --dry-run
-python src/fullstack_v9_workflow.py --profile dual --dry-run \
-  --song path/to/music --clips path/to/clips --output output
+python src/fullstack_v9_workflow.py --profile dual --song ./music \
+  --clips ./clips --output ./output
 ```
 
-Windows-Einstieg:
+Der Standard ist Dry-Run. Der `sync`-Profilplatzhalter blockiert externe Ausführung; die Orchestrierung veröffentlicht, synchronisiert keine Cloud und gibt kein Werbebudget aus. Details in [`FULLSTACK-V9.md`](FULLSTACK-V9.md).
 
-```bat
-1CLICK_FULLSTACK_V9_WORKFLOW.bat --profile fast --dry-run
-```
-
-Verfügbare Profile:
-
-| Profil | Enthaltene Stufen |
-|---|---|
-| `full` | Pfadprüfung, Audio/Beat, Distillation, Clips, lokale Vorschau, Audit, Ledger |
-| `dual` | Pfadprüfung, Audio/Beat, Clips, lokale Vorschau, Ledger |
-| `fast` | Pfadprüfung, Audio/Beat, lokale Vorschau, Ledger |
-| `noparm` | Pfadprüfung, Audio/Beat, Verzeichnis-Snapshot, Clips, Vorschau, Ledger |
-| `distill` | Pfadprüfung, Audio/Beat, lokale Wissensmetadaten, Clips |
-| `sync` | Pfadprüfung, Audit, Ledger und blockierte Sync-Platzhalterstufe |
-
-Für die externe Sync-Stufe ist ein gesondert geprüfter Adapter erforderlich. Ohne Adapter bleibt die Ausführung deaktiviert.
-
-## Portables Setup
-
-Das portable Setup-Skript legt lokale Verzeichnisse an, erstellt beziehungsweise aktualisiert die Genome-SQLite-Datenbank und erzeugt einen JSON-Bericht.
+### Portable Diagnose und Tests
 
 ```bash
 python scripts/portable_install.py --non-interactive --skip-tests
+python -m pytest tests/ -q
 ```
 
-Mit Abhängigkeiten und Tests:
+Der Diagnosebericht liegt anschließend in `reports/portable-install-latest.json`. Dependencies werden nur mit `--install-deps` installiert.
+
+### C++20-Granular-Synth testen
 
 ```bash
-python scripts/portable_install.py --non-interactive --install-deps
+cmake -S . -B build -DBUILD_TESTING=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
-Der Bericht wird unter `reports/portable-install-latest.json` geschrieben.
+## Optimierungsworkflow für Code und Logik
 
-## Lokale Paket-Suche
+Vor einer Optimierung Messbasis und Regressionstests festlegen; nur eine verhaltensrelevante Änderung pro Schritt vornehmen. Den Compiler-/RenderAST-Pass-Ablauf und die stackübergreifende Code-Optimierung dokumentiert [`CODE-OPTIMIZATION-WORKFLOW.md`](CODE-OPTIMIZATION-WORKFLOW.md).
 
-Gefundene lokale Python-Pakete und Requirements können erst geprüft und danach in `.venv` installiert werden:
+Kurzablauf:
+
+1. Baseline, Eingaben, Umgebung und erwartetes Verhalten dokumentieren.
+2. Relevante Tests und einen reproduzierbaren lokalen Benchmark ausführen.
+3. Eng begrenzte Änderung implementieren; keine ungemessenen Parallelisierungs- oder GPU-Annahmen.
+4. Tests erneut ausführen und Ausgabe, Laufzeit sowie Speicher-/Datenintegrität vergleichen.
+5. Änderungen mit messbarem Gewinn und ohne Regression behalten; JSON-Bericht und Entscheidung protokollieren.
 
 ```bash
-python scripts/install_candidates.py
-python scripts/install_candidates.py --install
+python -m pytest tests/ -q
+weed benchmark --db database/genome.sqlite3 --iterations 1000
 ```
 
-Die Installation wirkt nur auf das lokale Projekt-Environment. Virtuelle Umgebungen, VCS-Verzeichnisse, Build-Ausgaben und Vendor-Pfade werden ausgelassen.
+Der WE.ED.IT-Benchmark misst lokale SQLite-Count-Roundtrips, nicht Clip-Scoring oder Rendergeschwindigkeit. Benchmarkwerte sind hostabhängig.
 
-## Ausgabeverzeichnisse
+## Optionale Extras
 
-Standardmäßig werden lokale Laufzeitergebnisse unter diesen Pfaden abgelegt:
+| Extra | Zweck |
+|---|---|
+| `audio` | librosa, NumPy und SoundFile für Audioanalyse |
+| `vision` | OpenCV und NumPy für Clip-Features |
+| `semantic` | DuckDB, OpenCLIP, Torch, Pillow, OpenCV, NumPy und librosa |
+| `stems` | Demucs und audio-separator für optionale Stem-Trennung |
+| `cuda` | CuPy-CUDA-12-Option; erfordert passende lokale CUDA-Umgebung |
+| `test` | pytest und NumPy für Tests |
+| `cliruntime` | Rich für optionale CLI-Darstellung |
 
-- `output/` – lokale Workflow-Ausgaben
-- `reports/` – Diagnose-, Audit- und Run-Berichte
-- `database/` – SQLite-Datenbanken
-- `cache/` – Index- und Laufzeitdaten
-- `models/` – optional manuell bereitgestellte Modelle
-- `temp/` – temporäre Dateien
+Nur installieren, was für den eigenen Workflow gebraucht wird:
 
-## Sicherheit und Grenzen
-
-- Keine automatische Social-Media-Veröffentlichung.
-- Keine autonome Werbeausgabe oder Budgeterhöhung.
-- Keine Cloud-Synchronisation in den Standard-Workflows.
-- Keine Behauptung von Modelltraining aus leerer oder synthetischer Inventur.
-- Externe Aktionen, Rendering und Distribution erfordern getrennte Implementierung, Prüfung und menschliche Freigabe.
-- Lizenz-, Rechte-, Sample- und Persönlichkeitsrechte bleiben bei der verantwortlichen Person.
+```bash
+python -m pip install -e '.[audio,vision]'
+python -m pip install -e '.[semantic]'
+```
 
 ## Dokumentation
 
-- [INSTALLING.md](INSTALLING.md) – Installation und portable Einrichtung
-- [FULLSTACK-V9.md](FULLSTACK-V9.md) – Fullstack-v9-Stufen und Profile
-- [SYNAPSE-MODULE.md](SYNAPSE-MODULE.md) – SYNAPSE-Modulübersicht
-- [WEEDIT-NATIVE.md](WEEDIT-NATIVE.md) – native WE.ED.IT-Befehle
-- [POLYRHYTHMIK-KOMPENDIUM.md](POLYRHYTHMIK-KOMPENDIUM.md) – Rhythmus- und Takt-Spezifikation
-- [FEEDBACK-ANALYTICS.md](FEEDBACK-ANALYTICS.md) – Feedback- und Messkonzept
+- [`INSTALLING.md`](INSTALLING.md) – lokale Paketinstallation und Candidate-Scanner
+- [`PORTABLE-WORKFLOW.md`](PORTABLE-WORKFLOW.md) – portable Einrichtung und CLI
+- [`WEEDIT-NATIVE.md`](WEEDIT-NATIVE.md) – WE.ED.IT Pipeline und RenderAST-Optimierung
+- [`NATIVE-GENOME-3.md`](NATIVE-GENOME-3.md) – Render-Pässe, Replay-Ledger und Styles
+- [`CODE-OPTIMIZATION-WORKFLOW.md`](CODE-OPTIMIZATION-WORKFLOW.md) – messbarer Optimierungsprozess für alle Stacks
+- [`SYNAPSE-MODULE.md`](SYNAPSE-MODULE.md) – SYNAPSE-Manifeste und Freigabegrenzen
+- [`FULLSTACK-V9.md`](FULLSTACK-V9.md) – v9-Profile und lokaler Audit
+- [`POLYRHYTHMIK-KOMPENDIUM.md`](POLYRHYTHMIK-KOMPENDIUM.md) – Rhythmus-Referenz
 
-Weitere Architektur- und Fachunterlagen befinden sich als Markdown-Dateien im Repository.
+## Sicherheit und Grenzen
 
-## Tests
-
-```bash
-pytest tests/ -v
-```
+- Standardabläufe sind lokal; Posting, Werbeausgaben und Cloud-Synchronisation sind nicht aktiv.
+- Optionale Pakete können Modelle oder weitere Runtime-Komponenten benötigen; Installationen aus Paketindizes nur nach eigener Prüfung ausführen.
+- Der einfache Clip-Scanner behauptet keine Gesichts-, Emotions- oder Objekterkennung.
+- Optimierungspässe mit nicht implementierter Analyse sind als Platzhalter gekennzeichnet und erzeugen keine fingierten Reward- oder Trainingsdaten.
+- Medien müssen lizenziert sein; externe Aktionen benötigen getrennte Prüfung und Freigabe.
 
 ## Lizenz
 

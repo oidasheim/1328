@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oidasheim-synapse"
-version = "0.2.0"
-description = "Modular SYNAPSE production, rhythm, and semantic video workflow"
+version = "0.3.0"
+description = "Modular SYNAPSE production, rhythm, semantic video, and WONG forecasting workflow"
 readme = "SYNAPSE-MODULE.md"
 requires-python = ">=3.10"
 dependencies = []
@@ -18,6 +18,7 @@ test = ["pytest>=8"]
 synapse-plan = "synapse_cli:main"
 synapse-index-clips = "synapse.index_clips:main"
 synapse-semantic-render = "synapse.semantic_render:main"
+synapse-wong = "synapse.wong_cli:main"
 
 [tool.setuptools]
 packages = ["synapse"]

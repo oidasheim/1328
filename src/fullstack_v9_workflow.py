@@ -1,8 +1,8 @@
 """Deterministic, local-only Fullstack v9 stage orchestrator.
 
-This implementation does not execute publishing, cloud synchronization, ad
-spending, or external commands by default. External stages are represented as
-reviewable step definitions and only local dry-run/evaluation is enabled.
+This implementation resolves paths and produces a reviewable stage plan and
+repository audit. It does not execute publishing, cloud synchronization, ad
+spending, rendering, or arbitrary shell commands.
 """
 from __future__ import annotations
 
@@ -13,9 +13,8 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import sys
-from typing import Callable, Iterable
+from typing import Iterable
 
 
 STAGE_ORDER = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
@@ -43,10 +42,10 @@ STAGES: dict[str, Stage] = {
     "S2": Stage("S2", "scan a provided input directory", True, False),
     "S3": Stage("S3", "distill local knowledge metadata", True, False),
     "S4": Stage("S4", "prepare clip candidates", True, False),
-    "S5": Stage("S5", "render a local low-risk preview", True, False),
+    "S5": Stage("S5", "prepare a local preview", True, False),
     "S6": Stage("S6", "create a review-only audit report", True, False),
     "S7": Stage("S7", "write JSON run ledger", True, False),
-    "S8": Stage("S8", "explicit external sync placeholder", False, True),
+    "S8": Stage("S8", "external-sync placeholder", False, True),
 }
 
 
@@ -67,7 +66,7 @@ def utc_now() -> str:
 
 def resolve_path(value: str | None, environment_keys: Iterable[str],
                  fallbacks: Iterable[Path]) -> Path | None:
-    """Resolve an explicit path or one of several environment fallbacks."""
+    """Resolve the first existing explicit, environment, or fallback path."""
     candidates: list[Path] = []
     if value:
         candidates.append(Path(value).expanduser())
@@ -86,20 +85,21 @@ def resolve_path(value: str | None, environment_keys: Iterable[str],
 def stage_resolution(root: Path, profile: str, *, song: str | None = None,
                      clips: str | None = None, output: str | None = None,
                      dry_run: bool = True) -> dict[str, object]:
-    if profile not selected_profile(profiles=PROFILES):
+    if profile not in PROFILES:
         raise ValueError(f"unknown profile: {profile}")
     music = resolve_path(song, ("OIDA_MUSIC_DIR", "MUSIC_DIR"),
-                         (root / "music", root / "audio", Path.cwd()))
+                         (root / "music", root / "audio"))
     clip_root = resolve_path(clips, ("OIDA_CLIPS_DIR", "CLIPS_DIR"),
-                            (root / "clips", root / "assets", root))
+                             (root / "clips", root / "assets"))
     output_root = resolve_path(output, ("OIDA_OUTPUT_DIR", "OUTPUT_DIR"),
                                (root / "output",))
     if output_root is None:
-        output_root = root / "output"
+        output_root = (Path(output).expanduser().resolve() if output
+                       else root / "output").resolve()
     stages = PROFILES[profile]
     external = [stage_id for stage_id in stages if STAGES[stage_id].external_action]
     if external and not dry_run:
-        raise RuntimeError("External stages require a separately reviewed adapter; current workflow refuses execution")
+        raise RuntimeError("External stages require a separately reviewed adapter; execution is disabled")
     return {"root": str(root.resolve()), "music": str(music) if music else None,
             "clips": str(clip_root) if clip_root else None,
             "output": str(output_root), "profile": profile,
@@ -107,20 +107,16 @@ def stage_resolution(root: Path, profile: str, *, song: str | None = None,
             "external_stages": external}
 
 
-def selected_profile(profiles: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
-    # Small helper enables validation without mutating the profile registry.
-    return tuple(profiles)
-
-
 def audit_repository(root: Path) -> dict[str, object]:
-    """Inventory BAT files and report obvious static path/drift risks."""
-    bat_files = sorted(p for p in root.rglob("*.bat") if p.is_file())
+    """Inventory BAT files and flag simple static path/action risks for review."""
+    excluded = {".git", ".venv", "venv", "node_modules", "__pycache__"}
+    bat_files = sorted(p for p in root.rglob("*.bat")
+                       if p.is_file() and not excluded.intersection(p.parts))
     findings: list[str] = []
     patterns = (
-        (re.compile(r"(?i)E:\\[\\^]+"), "legacy E:\\ hard-coded path"),
-        (re.compile(r"\\\\"), "possible double-backslash path"),
+        (re.compile(r"(?i)\b[A-Z]:\\"), "absolute drive-letter path; review portability"),
         (re.compile(r"(?i)(posteverywhere|send_to_creators|api\.creator-network)"),
-         "potential external publishing/distribution call"),
+         "potential external publishing/distribution call; verify approval gate"),
     )
     for bat in bat_files:
         try:
@@ -140,8 +136,6 @@ def run_fullstack(profile: str = "full", *, root: Path | None = None,
                   output: str | None = None, dry_run: bool = True,
                   ledger: str | None = None) -> dict[str, object]:
     root = (root or Path(__file__).resolve().parents[1]).resolve()
-    if profile not in PROFILES:
-        raise ValueError(f"unknown profile: {profile}")
     resolution = stage_resolution(root, profile, song=song, clips=clips,
                                   output=output, dry_run=dry_run)
     audit = audit_repository(root)
@@ -151,15 +145,17 @@ def run_fullstack(profile: str = "full", *, root: Path | None = None,
                        "pass-dry-run" if dry_run else "review-only",
                        tuple(audit["findings"]))
     report = {"schema_version": 1, "epistemic_status": "LOCAL_RUN_AUDIT",
-              "resolution": resolution, "audit": audit,
-              "run": asdict(record),
-              "constraints": {"external_publish": False,
-                               "cloud_sync": False,
-                               "ad_spend": False,
-                               "external_stages_require_review": True}}
-    target = Path(ledger).expanduser().resolve() if ledger else root / "reports" / "fullstack_v9_workflow_report.json"
+              "resolution": resolution, "audit": audit, "run": asdict(record),
+              "constraints": {"external_publish": False, "cloud_sync": False,
+                              "ad_spend": False, "render_execution": False,
+                              "external_stages_require_review": True}}
+    target = (Path(ledger).expanduser().resolve() if ledger
+              else root / "reports" / "fullstack_v9_workflow_report.json")
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporary = target.with_name(target.name + ".tmp")
+    temporary.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    os.replace(temporary, target)
+    report["ledger_path"] = str(target)
     return report
 
 
@@ -172,18 +168,24 @@ def main() -> int:
     parser.add_argument("--ledger", type=Path)
     parser.add_argument("--root", type=Path)
     parser.add_argument("--dry-run", action="store_true", default=True)
-    parser.add_argument("--eval", action="store_true", help="run repository BAT/JSON audit only")
+    parser.add_argument("--eval", "--evaluate", dest="evaluate", action="store_true",
+                        help="inventory batch files and write a review-only audit report")
     args = parser.parse_args()
-    root = args.root or Path(__file__).resolve().parents[1]
+    root = (args.root or Path(__file__).resolve().parents[1]).resolve()
     try:
-        if args.eval:
-            audit = audit_repository(root.resolve())
-            print(json.dumps(audit, indent=2, ensure_ascii=False))
+        if args.evaluate:
+            audit = audit_repository(root)
+            target = args.ledger or root / "reports" / "fullstack_v9_batch_evaluation.json"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(audit, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            print(json.dumps({**audit, "report_path": str(target)}, indent=2, ensure_ascii=False))
             return 0
-        report = run_fullstack(args.profile, root=root, song=str(args.song) if args.song else None,
+        report = run_fullstack(args.profile, root=root,
+                               song=str(args.song) if args.song else None,
                                clips=str(args.clips) if args.clips else None,
                                output=str(args.output) if args.output else None,
-                               dry_run=args.dry_run, ledger=str(args.ledger) if args.ledger else None)
+                               dry_run=args.dry_run,
+                               ledger=str(args.ledger) if args.ledger else None)
         print(json.dumps(report, indent=2, ensure_ascii=False))
         return 0
     except (OSError, RuntimeError, ValueError) as exc:

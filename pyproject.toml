@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.setuptools.build_meta"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "oidasheim-synapse"
@@ -12,7 +12,7 @@ dependencies = []
 
 [project.optional-dependencies]
 semantic = ["duckdb>=1.0", "open-clip-torch>=2.24", "torch>=2.2", "Pillow>=10", "opencv-python>=4.8", "numpy>=1.26", "librosa>=0.10"]
-audio = ["libsrcrosa>=0.10", "numpy>=1.26", "soundfile>=0.12"]
+audio = ["librosa>=0.10", "numpy>=1.26", "soundfile>=0.12"]
 vision = ["opencv-python>=4.8", "numpy>=1.26"]
 cuda = ["numpy>=1.26", "opencv-python>=4.8", "cupy-cuda12x>=13"]
 cliruntime = ["rich>=13"]

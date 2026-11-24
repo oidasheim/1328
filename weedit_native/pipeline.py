@@ -1,0 +1,39 @@
+"""Orchestration for scan → song compile → director → resolver → optimizer."""
+from __future__ import annotations
+
+from pathlib import Path
+import json
+
+from .compiler import compile_song
+from .director import generate_intents
+from .genome import GenomeDB
+from .models import RenderAST
+from .optimizer import optimize_render
+from .resolver import resolve_intents, set_beat_grid
+
+
+def compile_project(song_path: str | Path, clips_dir: str | Path, database: str | Path,
+                    *, bpm: float | None = None, beat_times: list[float] | None = None,
+                    duration: float | None = None, width: int = 1920,
+                    height: int = 1080, fps: int = 30) -> RenderAST:
+    song = compile_song(song_path, bpm=bpm, beat_times=beat_times, duration=duration)
+    genome = GenomeDB(database)
+    try:
+        clips = genome.all()
+    finally:
+        genome.close()
+    if not clips:
+        raise RuntimeError(f"No indexed clips in {database}; run `weed scan {clips_dir}` first")
+    intents = generate_intents(song)
+    set_beat_grid(song.beats)
+    shots = resolve_intents(intents, clips)
+    ast = RenderAST(song.source, tuple(shots), song.duration, width, height, fps,
+                    metadata={"bpm": song.bpm, "warnings": list(song.warnings), "section_count": len(song.sections)})
+    return optimize_render(ast)
+
+
+def write_ast(ast: RenderAST, destination: str | Path) -> Path:
+    target = Path(destination)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(ast.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return target

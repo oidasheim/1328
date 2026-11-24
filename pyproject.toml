@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oidasheim-synapse"
-version = "0.4.0"
+version = "0.5.0"
 description = "Modular SYNAPSE workflow and WE.ED.IT OIDA music-video compiler"
 readme = "SYNAPSE-MODULE.md"
 requires-python = ">=3.10"
@@ -14,7 +14,8 @@ dependencies = []
 semantic = ["duckdb>=1.0", "open-clip-torch>=2.24", "torch>=2.2", "Pillow>=10", "opencv-python>=4.8", "numpy>=1.26", "librosa>=0.10"]
 audio = ["librosa>=0.10", "numpy>=1.26", "soundfile>=0.12"]
 vision = ["opencv-python>=4.8", "numpy>=1.26"]
-test = ["pytest>=8"]
+cuda = ["numpy>=1.26", "opencv-python>=4.8", "cupy-cuda12x>=13"]
+test = ["pytest>=8", "numpy>=1.26"]
 
 [project.scripts]
 synapse-plan = "synapse_cli:main"
@@ -22,6 +23,7 @@ synapse-index-clips = "synapse.index_clips:main"
 synapse-semantic-render = "synapse.semantic_render:main"
 synapse-wong = "synapse.wong_cli:main"
 weed = "weedit_native.cli:main"
+synapse-art-director = "synapse.art_director:main"
 
 [tool.setuptools]
 packages = ["synapse", "weedit_native"]

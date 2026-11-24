@@ -104,6 +104,83 @@ SYNAPSE ist das autonome Musik-Operating-System hinter Produktion, Visualisierun
 - 66,7-%-Catalog-Lockout verhindert Clip-Wiederholungen.
 - Fehler werden diagnostiziert, codifiziert und als Systemwissen wiederverwendet.
 
+## Hardware- und Prozessarchitektur
+
+Die Host-Hardware wird in zwei Verarbeitungs-Domänen aufgeteilt:
+
+| Kerne | Domäne | Prozesse |
+|---|---|---|
+| **Cores [0, 1]** | Supervisor & I/O | Main Supervisor, API Listener, Swarm Coordinator, Posting Agents und Atlas Monitor |
+| **Cores [2, 3, 4, 5]** | Compute & Rendering | CLAW2/NVENC-Rendering, Audio-DSP, Stem-Slicing und Transformer-Inference |
+
+```python
+import os
+import psutil
+
+process = psutil.Process(os.getpid())
+process.cpu_affinity([0, 1])  # Supervisor & Posting Agents
+```
+
+### Storage- und Asset-Routing
+
+- `I:\Oidasheim\Sound\` – Master-Audio, Tracks und Stem-Pools.
+- `D:\Oidasheim\NFOs\Clips\` – Metadaten-Sheets und lokale Clip-Sources.
+- `H:\` – optionaler High-Fidelity-Archiv- und Master-Export-Speicher.
+- `J:\Oidasheim\Musik\m4a\` – Stems und Master-Tracks.
+- `cache/weed_it_dog_pipe-v3.1-Clip.db` – Clip-Registry mit `sqlite3.Row`-Factory.
+
+### Zero-Fidelity-Degradation und Zero-Tagging
+
+- Separate Stream-Zuweisung: `-map 0:v -map 1:a`.
+- Keine Metadaten oder Kapitel: `-map_metadata -1 -map_chapters -1 -sn -dn`.
+- Audio-Export: `-c:a aac -b:a 320k`.
+- Dateiname: `WE_ED_IT_OIDA_[ProjectName]_[Version].mp4`.
+- Dateinamen werden für Render- und Archive-Pfade bereinigt.
+
+### 2/3 SQLite Catalog Guard
+
+Die zuletzt verwendeten zwei Drittel eines aktiven Clip-Pools werden gesperrt. Nach der Rotation des aktiven Pools werden Clips wieder auswählbar:
+
+```sql
+SELECT id, filepath, duration
+FROM clip_registry
+WHERE status = 'active'
+  AND id NOT IN (
+    SELECT id
+    FROM clip_registry
+    WHERE status = 'active'
+      AND last_used_timestamp IS NOT NULL
+    ORDER BY last_used_timestamp DESC
+    LIMIT CAST((SELECT COUNT(*) FROM clip_registry
+                WHERE status = 'active') * 2 / 3 AS INT)
+  )
+ORDER BY RANDOM()
+LIMIT 1;
+```
+
+### Kinetic Perspective Engine
+
+1. 1.15× Upscale auf 2208×1242 mit Lanczos.
+2. Sinusoidaler Crop um das bewegte Bildzentrum.
+
+```text
+scale=2208:1242:flags=lanczos
+crop=1920:1080:(iw-ow)/2+50*sin(2*PI*t/d):(ih-oh)/2+50*cos(2*PI*t/d)
+```
+
+### Beat-Sync und Vector Matching
+
+```text
+Frames per Beat = FPS × 60 / BPM
+Frames per Bar  = FPS × 60 × 4 / BPM
+```
+
+Turntablism- und Vinyl-Scratches werden im Frequenzband zwischen 1.5 kHz und 6 kHz geprüft und können Stutter-, Reverse- oder Datamosh-Effekte auslösen.
+
+```text
+Score = (v_audio · v_clip) / (||v_audio|| × ||v_clip||)
+```
+
 ## Schneller Start
 
 ### Umgebungsprüfung
@@ -112,7 +189,7 @@ SYNAPSE ist das autonome Musik-Operating-System hinter Produktion, Visualisierun
 setup_env.bat
 ```
 
-Optional kann ein vollständiges Setup über die bereitgestellten Skripte ausgeführt werden:
+Optional:
 
 ```bash
 bash setup.sh
@@ -162,6 +239,60 @@ python main.py "J:\MyMusic\track.mp3" --platform vertical --tiktok-mode
 python main.py "J:\MyMusic\track.mp3" --export-otio
 ```
 
+## SYNAPSE / WONG OS v5.2 — 5-Node-Label-Pipeline
+
+Das virtuelle Record-Label- und Produktionsumfeld begleitet Artists von der ersten Demo bis zu professioneller Veröffentlichung. Die fünf Nodes teilen Produktions-, Qualitäts-, Content-, Vertriebs- und Feedback-Erkenntnisse über eine gemeinsame lokale Wissensbasis. Veröffentlichungen, Werbeausgaben und Verträge bleiben kontrollierbar und werden nicht ohne Freigaben automatisch ausgelöst.
+
+| Node | Verantwortung | Ergebnis |
+|---|---|---|
+| **KAIRO** | Audio-DSP, Tempo, Transienten, Energie, Stem-Vorbereitung und Sub-Bass-Analyse | Song-Kontext, Hook-/Drop-Zeitmarken und Stem-Artefakte |
+| **VEGA** | Mastering, Loudness, True-Peak- und Qualitätskontrolle | QC-Status und freigegebene Master-Version |
+| **JINX** | Beat-synchrone Video-Kompilation, Aspect-Ratios, Content-Varianten und Clip-Diversity | Render-Pläne, Shorts/Reels und kreative Assets |
+| **ORION** | Release-Planung, Playlist-/Kuratoren-Recherche und Pitch-Vorbereitung | Priorisierte, nachvollziehbare Kontakt- und Pitch-Listen |
+| **ATLAS** | Buchhaltung, Budgetkontrolle, Rechte-/Royalty-Berichte und Kampagnenanalyse | Reports und budgetierte Empfehlungen |
+
+### Vom Rohmaterial bis zum Release
+
+```text
+Artist / Demo
+  → KAIRO: Analyse, Stems und Hook-Marker
+  → VEGA: Mastering und QC
+  → JINX: Musikvideo, Kurzformate und Varianten
+  → ORION: Release-Kalender, Pitching und Distribution
+  → ATLAS: Kosten, Einnahmen, Rechte und Kampagnen-Reporting
+  → Feedback: Retention und echte Performance-Metriken zurück ins Team
+```
+
+Das Ziel ist ein Artist-Development-Pfad von der lokalen Underground-Szene zu professionellen Veröffentlichungen: Songwriting und Produktion, visuelle Identität, konsistente Content-Planung, qualitätsgesicherte Masters, transparente Rechteverwaltung und schrittweise Reichweitenentwicklung. Reichweite, Viralität oder Chartplatzierungen sind Ziele, keine garantierten Resultate.
+
+### Golden Loop und kontextueller Bandit
+
+- Self-Critic verfolgt Schnittdichte (Zielkorridor 15–30 Cuts/min), hektische Shots unter 0,8 s und Clip-Duplikate.
+- Beispielhafte Reward-Gewichte: 0,35 Dichte, 0,40 Hektik-Vermeidung und 0,25 Duplikat-Vermeidung; QC-Fehler reduzieren den Reward.
+- SLK-Arme können `slow`, `medium`, `fast`, `phrase` und `stutter` umfassen.
+- LinUCB-Kontext kann Tempo, Energie, Dauer und Director-Archetyp berücksichtigen; Exploration kann ergänzend per ε-greedy erfolgen.
+- Erfahrungsdaten werden lokal in `experience_omega.db` gespeichert.
+- Dry-Run- oder Dummy-Daten sind keine belastbare Grundlage für Performance-Lernen. Reale Retention- und View-Daten sollten getrennt und nachvollziehbar eingespielt werden.
+
+### Delayed Feedback, Dashboard und Batch
+
+```bash
+python core.py input/ --dry-run --epsilon 0.15 --seed 42
+python core.py --feedback feedback.csv
+python main.py synapse --song "input/track.mp3" --aspect 9:16 --director Auteur
+python main.py synapse input/ --watch --interval 5.0
+```
+
+`feedback.csv` kann `track`, `retention` und `views` enthalten. Ein möglicher Reward-Mix ist 70 % Retention und 30 % normalisierte Views; Kalibrierung ist erst mit ausreichend echten Beobachtungen sinnvoll. Das lokale Dashboard kann unter `output/dashboard.html` liegen, sofern der jeweilige Runner es implementiert.
+
+### Security- und Autonomie-Grenzen
+
+- Social-Media-Posts werden vor Veröffentlichung geprüft und durch menschliche Freigabe bestätigt.
+- Werbebudgets haben harte Limits, Ausgabenprotokolle und explizite Zustimmung; kein autonomes Erhöhen von Budgets.
+- Keine Fake-Streams, gekauften Engagements, Spam-Pitches oder Umgehung von Plattform-Schutzmaßnahmen.
+- Royalty-Verteilungen und Smart-Contract-Transaktionen benötigen verifizierte Rechte, geprüfte Empfänger und autorisierte Freigabe.
+- Creator-Material, Samples, Bild-/Video-Clips und persönliche Daten müssen lizenziert bzw. mit entsprechender Einwilligung verarbeitet werden.
+
 ## Virale Video-Strategie
 
 Virale Musikclips folgen typischen Mustern:
@@ -172,17 +303,17 @@ Virale Musikclips folgen typischen Mustern:
 4. **Untertitel und Lyrics**, auch bei deaktiviertem Ton.
 5. **UGC-freundliche Konzepte** wie Tanz-, Lipsync- oder Meme-Challenges.
 6. **Crossposting** auf TikTok, Instagram Reels und YouTube Shorts.
-7. **Micro-Influencer-Seeding** vor der offiziellen Kampagne.
-8. **Retention-Tracking** und schnelle Iteration in den ersten Upload-Stunden.
+7. **Micro-Influencer-Seeding** mit transparenten Kooperationen.
+8. **Retention-Tracking** und schnelle Iteration anhand zulässiger Plattformmetriken.
 
 ### Plattform-Fokus
 
-- **TikTok:** UGC- und Viralitätspotenzial.
+- **TikTok:** UGC- und Discovery-Potenzial.
 - **Instagram Reels:** Musikentdeckung und markenorientiertes Crossposting.
 - **YouTube:** Musikvideos, Shorts und Empfehlungen.
 - **X:** Industrie-, Community- und Diskussionskanal.
 
-Wichtige KPIs sind Wiedergabezeit, Completion Rate, Shares, Virality-Rate, Creation Count und Streaming-/Chart-Conversion.
+Wichtige KPIs sind Wiedergabezeit, Completion Rate, Shares, Creation Count und Streaming-/Chart-Conversion. Metriken dienen als Messwerte, nicht als Garantie für Viralität.
 
 ## Portable Unified Edition v8.0
 
@@ -312,35 +443,6 @@ Der Feedback-Loop soll Prognosen und Release-Metriken stufenweise prüfen:
 3. **L3 — Entropie- und Konsensprüfung:** Unsichere Vorhersagen neu bewerten und Agenten-Konsens nachvollziehbar protokollieren.
 
 Als operative Leitplanken sind höchstens drei Iterationen, eine relative Delta-Schranke unter 2 % und ein transaktionaler Rollback-Ledger vorgesehen. Prognosen und Schwellenwerte müssen mit realen Daten validiert werden.
-
-## Hardware-Profil
-
-- Intel Core i5-9400F, 6 physische Kerne / 6 Threads
-- NVIDIA GeForce GTX 1650, Turing NVENC
-- Supervisor/API: Kerne 0–1
-- Rendering/DSP: Kerne 2–5
-
-### FFmpeg
-
-```text
--hwaccel cuda -c:v h264_nvenc -preset p4 -profile:v high -rc vbr -cq 19 -bf:v 3
-```
-
-CPU-Fallback:
-
-```text
--c:v libx264 -preset ultrafast -crf 22 -c:a aac -b:a 192k
-```
-
-## Rendering-Invarianten
-
-- Getrenntes Stream-Mapping: `-map 0:v -map 1:a`
-- Keine Metadaten oder Kapitel: `-map_metadata -1 -map_chapters -1 -sn -dn`
-- Audio: 320-kbps-AAC als Projektvorgabe
-- Hardware-Rendering bevorzugt, CPU-Fallback verfügbar
-- Adaptive Worker-Verteilung für 1080p und 4K
-- Anti-Repetition über Catalog-Lock und Nutzungshistorie
-- Export als MP4 und optional OpenTimelineIO
 
 ## Tests und Release-Paket
 

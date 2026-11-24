@@ -1,10 +1,18 @@
-"""Modular SYNAPSE AUDIO DYNAMICS workflow.
-
-This package plans production and distribution work; external posting, ad spend,
-and financial transactions remain explicit integrations requiring approval.
-"""
-
 from .models import Track, ReleaseManifest
 from .pipeline import SynapsePipeline
+from .rhythm import (
+    PolyrhythmGrid,
+    MeterSpec,
+    PolymeterCycle,
+    lcm_polyrhythm_grid,
+    resolve_meter,
+    compute_polymeter_cycle,
+    generate_meter_timeline,
+)
 
-__all__ = ["Track", "ReleaseManifest", "SynapsePipeline"]
+__all__ = [
+    "Track", "ReleaseManifest", "SynapsePipeline",
+    "PolyrhythmGrid", "MeterSpec", "PolymeterCycle",
+    "lcm_polyrhythm_grid", "resolve_meter", "compute_polymeter_cycle",
+    "generate_meter_timeline",
+]

@@ -1,0 +1,79 @@
+# Polyrhythmik-Kompendium & Rhythm-Engine
+
+Dieses Modul bündelt Theorie, Übung und exakte Zeitraster für Polyrhythmik,
+Polymetrik und Video-Synchronisation. Es ergänzt die SYNAPSE-Pipeline mit
+mathematisch nachvollziehbaren Daten statt unbelegter Aussagen über
+Neurotransmitter oder garantierte Publikumsreaktionen.
+
+## Begriffe
+
+- **Polyrhythmik**: Zwei oder mehr Pulsfolgen teilen einen Zeitrahmen, etwa
+  drei gleichmäßige Schläge gegen zwei. Beim 3:2 treffen sich die Stimmen am
+  Zyklusanfang; ihre Zwischenpulse liegen bei 0, 1/3, 2/3 und 0, 1/2.
+- **Polymetrik**: Unterschiedliche Taktlängen laufen parallel. Bei 4/4 gegen
+  3/4 ist der gemeinsame Downbeat-Zyklus zwölf Viertelnoten lang: drei 4/4-
+  Takte entsprechen vier 3/4-Takten.
+- **Taktart**: Zähler und Nenner beschreiben Gruppierung und Notenwert. 6/8,
+  7/8, 7/12, 16/12 und 24/16 sind als notierte Metren gültig; sie sind nicht
+  automatisch „irrational“. Bei zusammengesetzten Metren hängt die gefühlte
+  Beat-Einheit außerdem von der musikalischen Interpretation ab.
+- **Frame-Lock**: Ein musikalischer Zeitpunkt kann zwischen Videoframes liegen.
+  Die API liefert deshalb exakte rationale Frame-Positionen und weist aus,
+  ob ein Ereignis genau auf einem Frame liegt.
+
+## Einstieg und Übungsweg
+
+1. **Isolation**: Klatsche erst jede Stimme einzeln und halte ein konstantes
+   Metronomtempo.
+2. **Sprechen**: Nutze Silben oder zähle den gemeinsamen kleinsten Rasterpuls.
+3. **Integration**: Klatsche eine Stimme und sprich die andere; tausche dann.
+4. **Musikalische Anwendung**: Lege eine Stimme auf Kick/Hi-Hat und die andere
+   auf eine Melodie oder Ad-lib. Nimm dich auf und prüfe, ob der Grundpuls stabil
+   bleibt.
+
+Ein einfaches Zählmodell für 3:2 ist `1-trip-let, 2-trip-let`: die 3er-Stimme
+setzt auf `1`, `trip`, `let`; die 2er-Stimme auf `1` und `let` des gemeinsamen
+Rasters. Übe langsam und steigere das Tempo erst, wenn beide Linien einzeln
+stabil sind.
+
+## Beispiel: 16 Takte und Videoframes
+
+```python
+from synapse.rhythm import generate_meter_timeline
+
+rows = generate_meter_timeline(7, 8, bpm=144, fps=30, bars=16)
+for row in rows:
+    if row["bar_downbeat"]:
+        print(row["bar"], row["time_seconds"], row["frame"])
+```
+
+Das Raster enthält für 16 Takte 7/8 insgesamt 112 Zählzeiten. Bei 144 Viertel-
+noten-BPM dauert ein 7/8-Takt 1.4583 Sekunden und entspricht bei 30 fps 43.75
+Frames; Taktgrenzen liegen daher nicht alle exakt auf einem Frame. Der Renderer
+muss den Frame-Rundungsfehler kontrolliert verteilen oder auf einen geeigneten
+Zeitbasis-/FPS-Modus wechseln.
+
+## API-Beispiele
+
+```python
+from synapse.rhythm import (
+    lcm_polyrhythm_grid,
+    compute_polymeter_cycle,
+    resolve_meter,
+)
+
+print(lcm_polyrhythm_grid(3, 2))
+print(compute_polymeter_cycle((4, 4), (3, 4), bpm=120, fps=30))
+print(resolve_meter(7, 8, bpm=144, fps=30))
+```
+
+Run the test suite with `pytest tests/test_rhythm.py -q`.
+
+## Audio-visuelle Gestaltung: verantwortungsvolle Defaults
+
+Beat-Sync, Zoom, Farbwechsel und Schnitte sind kreative Werkzeuge, keine
+Methode zur Kontrolle von Bewusstsein oder Dopamin. Keine Strobe- oder
+Flackerfrequenzen verwenden, die photosensitive Zuschauer gefährden könnten;
+bei schnellen Helligkeitswechseln konservative Grenzwerte, Warnhinweise und
+eine nicht-flackernde Alternative anbieten. Audio-Mastering muss Pegelspitzen,
+Kopfhörer- und Lautsprecherwiedergabe sowie geltende Loudness-Ziele prüfen.

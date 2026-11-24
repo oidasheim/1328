@@ -1,0 +1,8 @@
+# Optional dependencies for semantic CLIP indexing and rendering.
+# Install PyTorch using the official selector for your OS/CUDA setup first.
+duckdb>=1.0
+open-clip-torch>=2.24
+Pillow>=10
+opencv-python>=4.8
+numpy>=1.26
+librosa>=0.10

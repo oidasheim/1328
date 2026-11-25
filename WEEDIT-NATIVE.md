@@ -25,8 +25,8 @@ weed render ./reports/song-a.json --out ./output/song-a.mp4
 
 FFmpeg muss für Rendering separat installiert und über `PATH` erreichbar sein.
 `weed compile` funktioniert weiterhin ohne Poolplan und verwendet dann den gesamten
-indizierten Clipbestand. `weed make` kann ebenfalls `--pool-plan` verwenden. Rendert
-nur bei explizitem `--out`; vorhandene Renderziele werden nicht überschrieben.
+indizierten Clipbestand. `weed make` unterstützt ebenfalls `--pool-plan`. Rendering
+startet nur bei explizitem `--out`; vorhandene Renderziele werden nicht überschrieben.
 
 ## Komponenten und Garantien
 
@@ -43,20 +43,20 @@ nur bei explizitem `--out`; vorhandene Renderziele werden nicht überschrieben.
 
 Der Scanner misst Bewegung, Helligkeit und Sättigung sowie einfache Tags. Er behauptet
 keine Gesichts-, Emotions- oder Objekterkennung. Farbfilterung ist absichtlich minimal;
-Details und Poolplan-Schema stehen in [`CLIP-POOL-PLANNING.md`](CLIP-POOL-PLANNING.md).
+Details und Poolplanschema stehen in [`CLIP-POOL-PLANNING.md`](CLIP-POOL-PLANNING.md).
 
 ## Validierung und Grenzen
 
 Die Song-Pool-Zuweisung ist global, deterministisch und exklusiv, solange genug Clips
 vorhanden sind. Bei knapper Bibliothek werden Wiederverwendungen explizit markiert,
 nicht verdeckt. Veraltete Planpfade brechen mit einem Diagnosefehler ab. Shotbedarf
-wird aus expliziten Beats abgeleitet und schließt Abschnittsenden ohne stille Lücken.
+wird aus Beats abgeleitet und schließt Abschnittsenden ohne stille Lücken.
 
 ```bash
 python -m pytest tests/test_pool_planning.py tests/test_weedit_native.py -q
 weed verify --db ./database/genome.sqlite3
 ```
 
-Der Bestand implementiert keine AVX2-Bindings, GTX-1650-spezifische VRAM-Steuerung,
+Das Repository implementiert keine AVX2-Bindings, GTX-1650-spezifische VRAM-Steuerung,
 ComfyUI-Automation, DiD-Auswertung oder Multi-Agent-Schwärme. Hardwaregrenzen und
 fehlende Komponenten werden nicht als implementierte Funktionen ausgegeben.

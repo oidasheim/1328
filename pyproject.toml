@@ -35,6 +35,7 @@ synapse-platform-vector = "synapse.platform_vector_cli:main"
 synapse-evidence = "synapse.viral_evidence_cli:main"
 synapse-ava-plan = "synapse.creative_identity:main"
 weed = "weedit_native.cli:main"
+weed-pool-plan = "weedit_native.pool:main"
 
 [tool.setuptools]
 packages = ["synapse", "weedit_native", "src"]

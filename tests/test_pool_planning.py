@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from weedit_native.models import ClipDNA, Intent, ShotNeed
 from weedit_native.pool import PoolPlan, allocate_song_pools
 from weedit_native.resolver import build_shot_needs, resolve
@@ -14,13 +16,9 @@ def test_global_pool_reserves_specialist_clips_and_is_order_independent():
     first = allocate_song_pools({"/music/a.mp3": needs_a, "/music/b.mp3": needs_b}, clips, pool_size=1)
     second = allocate_song_pools({"/music/b.mp3": needs_b, "/music/a.mp3": needs_a}, list(reversed(clips)), pool_size=1)
     assert first == second
-    by_song = {PathLike(item.song): item.clip_paths for item in first.songs}
+    by_song = {Path(item.song).name: item.clip_paths for item in first.songs}
     assert by_song["a.mp3"] == ("/song-a-best.mp4",)
     assert by_song["b.mp3"] == ("/song-b-best.mp4",)
-
-
-def PathLike(path):
-    return path.rsplit("/", 1)[-1]
 
 
 def test_pool_capacity_shortfall_is_explicit_and_plan_roundtrips():
@@ -40,8 +38,7 @@ def test_color_filter_rejects_extreme_brightness_but_keeps_usable_variation():
 
 
 def test_build_shot_needs_progresses_on_sparse_beats_and_closes_tail():
-    intents = [Intent("verse", 0, 5.2, .5)]
-    needs = build_shot_needs(intents, (0, 1, 2), fps=30)
+    needs = build_shot_needs([Intent("verse", 0, 5.2, .5)], (0, 1, 2), fps=30)
     assert needs[0].start == 0
     assert abs(needs[-1].end - 5.2) < 1e-8
     assert all(abs(left.end - right.start) < 1e-8 for left, right in zip(needs, needs[1:]))

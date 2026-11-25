@@ -29,8 +29,7 @@ def compile_project(song_path: str | Path, clips_dir: str | Path, database: str 
         clips = list(clip_pool)
     if not clips:
         raise RuntimeError(f"No indexed clips in {database}; run `weed scan {clips_dir}` first")
-    intents = generate_intents(song)
-    shots = resolve_intents(intents, clips, beat_grid=song.beats, fps=fps)
+    shots = resolve_intents(generate_intents(song), clips, beat_grid=song.beats, fps=fps)
     ast = RenderAST(song.source, tuple(shots), song.duration, width, height, fps,
                     metadata={"bpm": song.bpm, "warnings": list(song.warnings),
                               "section_count": len(song.sections),

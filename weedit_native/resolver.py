@@ -1,4 +1,4 @@
-"""Constraint-aware deterministic candidate ranking and simple UCB learning."""
+"""Constraint-aware deterministic candidate ranking and clip reservation helpers."""
 from __future__ import annotations
 
 import math
@@ -6,20 +6,61 @@ from .models import ClipDNA, Intent, RenderShot, ShotNeed
 
 
 def resolve(need: ShotNeed, clips: list[ClipDNA], top_k: int = 25,
-            used_paths: set[str] | None = None) -> list[tuple[ClipDNA, float]]:
+            used_paths: set[str] | None = None, *,
+            brightness_range: tuple[float, float] = (0.03, 0.99)) -> list[tuple[ClipDNA, float]]:
+    """Return ranked usable clips, filtering only unusable/extreme-color frames by default."""
+    if top_k < 0:
+        raise ValueError("top_k must be non-negative")
+    low, high = brightness_range
+    if not (math.isfinite(low) and math.isfinite(high) and 0 <= low < high <= 1):
+        raise ValueError("brightness_range must be finite bounds in [0, 1]")
     used_paths = used_paths or set()
+    required = set(need.required_tags)
     ranked = []
     for clip in clips:
-        if clip.duration <= 0:
+        if (not math.isfinite(clip.duration) or clip.duration <= 0 or not clip.path
+                or not math.isfinite(clip.motion) or not 0 <= clip.motion <= 1
+                or not math.isfinite(clip.brightness) or not low <= clip.brightness <= high
+                or not math.isfinite(clip.saturation) or not 0 <= clip.saturation <= 1):
             continue
         tag_set = set(clip.tags)
-        required = set(need.required_tags)
         tag_score = len(required & tag_set) / max(1, len(required))
         motion_score = 1.0 - min(1.0, abs(clip.motion - need.preferred_motion))
+        # A gentle color preference, never a hard stylistic exclusion: brightness
+        # and saturation are measured features, not inferred hue or color grade.
+        target_brightness = 0.62 if need.color == "warm" else 0.5
+        color_score = 1.0 - min(1.0, abs(clip.brightness - target_brightness))
         novelty = 0.0 if clip.path in used_paths else 0.12
-        score = 0.48 * tag_score + 0.4 * motion_score + novelty
+        score = 0.44 * tag_score + 0.36 * motion_score + 0.08 * color_score + novelty
         ranked.append((clip, score))
-    return sorted(ranked, key=lambda item: (-item[1], item[0].path))[:max(0, top_k)]
+    return sorted(ranked, key=lambda item: (-item[1], item[0].path))[:top_k]
+
+
+def build_shot_needs(intents: list[Intent], beat_grid: tuple[float, ...], *,
+                     fps: int = 30, max_shot_seconds: float = 4.0) -> list[ShotNeed]:
+    """Expand musical intents to a contiguous, frame-aware set of shot needs."""
+    if fps <= 0 or not math.isfinite(max_shot_seconds) or max_shot_seconds <= 0:
+        raise ValueError("fps and max_shot_seconds must be positive")
+    beats = tuple(sorted(set(float(t) for t in beat_grid if math.isfinite(float(t)))))
+    result: list[ShotNeed] = []
+    frame = 1.0 / fps
+    index = 0
+    cursor = 0.0
+    for intent in intents:
+        if not (math.isfinite(intent.start) and math.isfinite(intent.end) and intent.end > intent.start):
+            continue
+        start = max(cursor, intent.start)
+        while start < intent.end - frame * 0.25:
+            next_beat = next((t for t in beats if t > start + 1e-6), intent.end)
+            end = min(intent.end, next_beat, start + max_shot_seconds)
+            # Avoid sub-frame tails and guarantee forward progress.
+            end = min(intent.end, max(end, start + frame))
+            result.append(ShotNeed(f"shot-{index:05d}", start, end, intent.energy,
+                                   intent.tags, min(1.0, max(0.0, intent.energy)),
+                                   intent.camera, intent.color))
+            index += 1
+            cursor = start = end
+    return result
 
 
 class UCBSelector:
@@ -49,39 +90,32 @@ class UCBSelector:
         self.counts[path] = count
 
 
-def resolve_intents(intents: list[Intent], clips: list[ClipDNA], *, seed: int = 0) -> list[RenderShot]:
+def resolve_intents(intents: list[Intent], clips: list[ClipDNA], *, seed: int = 0,
+                    beat_grid: tuple[float, ...] | None = None, fps: int = 30) -> list[RenderShot]:
     selector = UCBSelector()
     used: set[str] = set()
     result = []
-    index = 0
-    for intent in intents:
-        beat_boundaries = [intent.start]
-        # Shot length is capped by the next beat or a 4-second visual ceiling.
-        while beat_boundaries[-1] < intent.end - 1e-6:
-            next_beat = min((t for t in _beat_candidates if t > beat_boundaries[-1] + 1e-6), default=intent.end)
-            beat_boundaries.append(min(intent.end, next_beat, beat_boundaries[-1] + 4.0))
-        for start, end in zip(beat_boundaries, beat_boundaries[1:]):
-            duration = end - start
-            if duration <= 0: continue
-            need = ShotNeed(f"shot-{index:05d}", start, end, intent.energy, intent.tags,
-                            min(1.0, intent.energy), intent.camera, intent.color)
-            candidates = resolve(need, clips, used_paths=used)
-            if not candidates:
-                raise RuntimeError("No usable clips; run `weed scan` and check clip files")
-            selected = selector.select(candidates, total_pulls=index + 1)
-            score = next(score for clip, score in candidates if clip.path == selected.path)
-            result.append(RenderShot(selected.path, 0.0, min(duration, selected.duration), start,
-                                     intent.camera, intent.color, score))
-            used.add(selected.path)
-            selector.update(selected.path, score)
-            index += 1
+    needs = build_shot_needs(intents, _beat_candidates if beat_grid is None else beat_grid, fps=fps)
+    for index, need in enumerate(needs):
+        duration = need.end - need.start
+        candidates = resolve(need, clips, used_paths=used)
+        if not candidates:
+            raise RuntimeError("No usable clips after quality/color filtering; run `weed scan` and inspect clip brightness metadata")
+        selected = selector.select(candidates, total_pulls=index + 1)
+        score = next(score for clip, score in candidates if clip.path == selected.path)
+        shot_duration = min(duration, selected.duration)
+        if shot_duration <= 0:
+            raise RuntimeError(f"Selected clip has no usable source duration: {selected.path}")
+        result.append(RenderShot(selected.path, 0.0, shot_duration, need.start,
+                                 need.camera, need.color, score))
+        used.add(selected.path)
+        selector.update(selected.path, score)
     return result
 
 
-# Resolver receives an explicit beat grid through this narrow adapter to keep
-# intent generation separate from music analysis.
+# Backwards-compatible adapter for callers that still set a shared grid.
 _beat_candidates: tuple[float, ...] = ()
 
 def set_beat_grid(beats: tuple[float, ...]) -> None:
     global _beat_candidates
-    _beat_candidates = beats
+    _beat_candidates = tuple(beats)

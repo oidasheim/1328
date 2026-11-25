@@ -13,10 +13,18 @@ import time
 from .genome import GenomeDB, scan_directory
 from .models import RenderAST
 from .pipeline import compile_project, write_ast
+from .pool import PoolPlan
 from .renderer import FFmpegBackend
 from .report import write_report
 from .styles import BUILTIN_STYLES, install_style
 from .passes import run_pass_pipeline
+
+
+def _load_pool(path: Path | None, song: Path, clips):
+    if path is None:
+        return None
+    plan = PoolPlan.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    return plan.clips_for(song, clips)
 
 
 def _doctor(deep: bool = False) -> dict[str, object]:
@@ -41,7 +49,8 @@ def _doctor(deep: bool = False) -> dict[str, object]:
 def _verify(db_path: Path) -> dict[str, object]:
     checks: dict[str, object] = {"status": "pass", "checks": {}}
     modules = ("weedit_native.models", "weedit_native.genome", "weedit_native.pipeline",
-               "weedit_native.renderer", "weedit_native.passes", "weedit_native.replay")
+               "weedit_native.renderer", "weedit_native.passes", "weedit_native.replay",
+               "weedit_native.pool")
     checks["checks"]["modules"] = {name: __import__(name) is not None for name in modules}
     checks["checks"]["styles"] = sorted(BUILTIN_STYLES)
     if db_path.exists():
@@ -69,6 +78,7 @@ def main() -> int:
     compile_cmd = subs.add_parser("compile", help="Compile audio and clip genome to RenderAST JSON")
     compile_cmd.add_argument("song", type=Path); compile_cmd.add_argument("clips", type=Path)
     compile_cmd.add_argument("--db", type=Path, default=Path("database/genome.sqlite3"))
+    compile_cmd.add_argument("--pool-plan", type=Path, help="Use this song's reservation from a global pool plan")
     compile_cmd.add_argument("--out", type=Path, default=Path("reports/render_ast.json"))
     compile_cmd.add_argument("--width", type=int, default=1920); compile_cmd.add_argument("--height", type=int, default=1080); compile_cmd.add_argument("--fps", type=int, default=30)
 
@@ -77,8 +87,16 @@ def main() -> int:
     make = subs.add_parser("make", help="Scan (if needed), compile and optionally render")
     make.add_argument("song", type=Path); make.add_argument("clips", type=Path)
     make.add_argument("--db", type=Path, default=Path("database/genome.sqlite3"))
+    make.add_argument("--pool-plan", type=Path, help="Use this song's reservation from a global pool plan")
     make.add_argument("--ast", type=Path, default=Path("reports/render_ast.json")); make.add_argument("--out", type=Path)
     make.add_argument("--width", type=int, default=1920); make.add_argument("--height", type=int, default=1080); make.add_argument("--fps", type=int, default=30)
+
+    pool = subs.add_parser("pool-plan", help="Reserve clips globally across a batch of songs")
+    pool.add_argument("songs", type=Path, nargs="+")
+    pool.add_argument("--db", type=Path, default=Path("database/genome.sqlite3"))
+    pool.add_argument("--out", type=Path, default=Path("reports/song-pool-plan.json"))
+    pool.add_argument("--pool-size", type=int, default=25)
+    pool.add_argument("--fps", type=int, default=30)
 
     doctor = subs.add_parser("doctor", help="Check Python, FFmpeg and optional dependencies")
     doctor.add_argument("--deep", action="store_true")
@@ -98,8 +116,29 @@ def main() -> int:
 
     if args.command == "scan":
         print(json.dumps(scan_directory(args.clips, args.db), indent=2)); return 0
+    if args.command == "pool-plan":
+        if args.pool_size < 1 or args.fps < 1:
+            parser.error("--pool-size and --fps must be positive")
+        from .pool import plan_songs
+        genome = GenomeDB(args.db)
+        try:
+            clips = genome.all()
+        finally:
+            genome.close()
+        plan = plan_songs(args.songs, clips, pool_size=args.pool_size, fps=args.fps)
+        target = args.out.expanduser().resolve(); target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(target.name + ".tmp")
+        temporary.write_text(json.dumps(plan.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        temporary.replace(target)
+        print(json.dumps({"plan": str(target), "songs": len(plan.songs), "warnings": list(plan.warnings)}, indent=2)); return 0
     if args.command == "compile":
-        ast = compile_project(args.song, args.clips, args.db, width=args.width, height=args.height, fps=args.fps)
+        genome = GenomeDB(args.db)
+        try:
+            indexed = genome.all()
+        finally:
+            genome.close()
+        ast = compile_project(args.song, args.clips, args.db, width=args.width, height=args.height, fps=args.fps,
+                              clip_pool=_load_pool(args.pool_plan, args.song, indexed))
         print(f"Wrote {write_ast(ast, args.out)} ({len(ast.shots)} shots)"); return 0
     if args.command == "render":
         ast = RenderAST.from_dict(json.loads(args.ast.read_text(encoding="utf-8")))
@@ -107,23 +146,26 @@ def main() -> int:
     if args.command == "make":
         if not args.db.exists():
             print(f"Scan: {scan_directory(args.clips, args.db)}")
-        ast = compile_project(args.song, args.clips, args.db, width=args.width, height=args.height, fps=args.fps)
+        indexed_genome = GenomeDB(args.db)
+        try:
+            indexed = indexed_genome.all()
+        finally:
+            indexed_genome.close()
+        ast = compile_project(args.song, args.clips, args.db, width=args.width, height=args.height, fps=args.fps,
+                              clip_pool=_load_pool(args.pool_plan, args.song, indexed))
         write_ast(ast, args.ast)
         print(f"Compiled {len(ast.shots)} shots → {args.ast}")
         if args.out:
             print(f"Rendered {FFmpegBackend().render(ast, args.out)}")
         return 0
     if args.command == "doctor":
-        checks = _doctor(args.deep)
-        print(json.dumps(checks, indent=2))
+        checks = _doctor(args.deep); print(json.dumps(checks, indent=2))
         return 0 if checks["ffmpeg"] != "missing" else 1
     if args.command == "verify":
-        result = _verify(args.db)
-        print(json.dumps(result, indent=2))
+        result = _verify(args.db); print(json.dumps(result, indent=2))
         return 0 if result["status"] == "pass" else 1
     if args.command == "toolchain":
-        checks = _doctor(True)
-        print(json.dumps(checks, indent=2))
+        checks = _doctor(True); print(json.dumps(checks, indent=2))
         return 0 if checks["ffmpeg"] != "missing" else 1
     if args.command == "benchmark":
         if args.iterations < 1:
